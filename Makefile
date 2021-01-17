@@ -68,6 +68,7 @@ TESTS = \
 	tests/func/test_pqu \
 	tests/func/test_que \
 	tests/func/test_set \
+	tests/func/test_ust \
 	tests/func/test_stk \
 	tests/func/test_vec_capacity \
 	tests/func/test_vec
@@ -107,6 +108,8 @@ pqu:
 	$(call expand,$@,-DT=int -DP)
 set:
 	$(call expand,$@,-DT=int -DP)
+ust:
+	$(call expand,$@,-DT=int -DP)
 
 examples/astar:                      ALWAYS; $(CC)  $(CFLAGS) $@.c  -o $@
 examples/postfix:                    ALWAYS; $(CC)  $(CFLAGS) $@.c  -o $@
@@ -120,6 +123,7 @@ tests/func/test_lst:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
 tests/func/test_pqu:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
 tests/func/test_que:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
 tests/func/test_set:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
+tests/func/test_ust:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
 tests/func/test_stk:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
 tests/func/test_str:                 ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@
 tests/func/test_vec_capacity:        ALWAYS; $(CXX) $(CFLAGS) $@.cc -o $@

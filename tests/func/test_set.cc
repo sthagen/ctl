@@ -37,7 +37,7 @@ setup_sets(set_digi* a, std::set<DIGI>& b)
     {
         const int vb = TEST_RAND(TEST_MAX_SIZE);
         set_digi_insert(a, digi_init(vb));
-        b.insert(DIGI{vb});
+        b.insert(DIGI(vb));
     }
 }
 
@@ -55,6 +55,7 @@ main(void)
         setup_sets(&a, b);
         enum
         {
+            TEST_SELF,
             TEST_INSERT,
             TEST_ERASE,
             TEST_REMOVE_IF,
@@ -73,11 +74,23 @@ main(void)
         int which = TEST_RAND(TEST_TOTAL);
         switch(which)
         {
+            case TEST_SELF:
+            {
+                set_digi aa = set_digi_copy(&a);
+                foreach(set_digi, &aa, it)
+                    assert(set_digi_find(&a, *it.ref));
+                foreach(set_digi, &a, it)
+                    set_digi_erase(&aa, *it.ref);
+                assert(set_digi_empty(&aa));
+                set_digi_free(&aa);
+                CHECK(a, b);
+                break;
+            }
             case TEST_INSERT:
             {
                 const int vb = TEST_RAND(TEST_MAX_SIZE);
                 set_digi_insert(&a, digi_init(vb));
-                b.insert(DIGI{vb});
+                b.insert(DIGI(vb));
                 CHECK(a, b);
                 break;
             }
@@ -90,7 +103,7 @@ main(void)
                         const int key = TEST_RAND(TEST_MAX_SIZE);
                         digi kd = digi_init(key);
                         set_digi_erase(&a, kd);
-                        b.erase(DIGI{key});
+                        b.erase(DIGI(key));
                         CHECK(a, b);
                         digi_free(&kd);
                     }
@@ -105,7 +118,7 @@ main(void)
                     auto end = b.end();
                     while(iter != end)
                     {
-                        if(*iter->value % 2)
+                        if((int) *iter->value % 2)
                         {
                             iter = b.erase(iter);
                             b_erases += 1;
@@ -144,7 +157,7 @@ main(void)
                 int key = TEST_RAND(TEST_MAX_SIZE);
                 digi kd = digi_init(key);
                 int aa = set_digi_count(&a, kd);
-                int bb = b.count(DIGI{key});
+                int bb = b.count(DIGI(key));
                 assert(aa == bb);
                 CHECK(a, b);
                 digi_free(&kd);
@@ -155,7 +168,7 @@ main(void)
                 int key = TEST_RAND(TEST_MAX_SIZE);
                 digi kd = digi_init(key);
                 set_digi_node* aa = set_digi_find(&a, kd);
-                auto bb = b.find(DIGI{key});
+                auto bb = b.find(DIGI(key));
                 if(bb == b.end())
                     assert(set_digi_end(&a) == aa);
                 else
@@ -164,17 +177,6 @@ main(void)
                 digi_free(&kd);
                 break;
             }
-#if 0
-            case TEST_CONTAINS: // C++20.
-            {
-                int key = TEST_RAND(TEST_MAX_SIZE);
-                int aa = set_digi_contains(&a, key);
-                int bb = b.contains(key);
-                assert(aa == bb);
-                CHECK(a, b);
-                break;
-            }
-#endif
             case TEST_COPY:
             {
                 set_digi aa = set_digi_copy(&a);

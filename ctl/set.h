@@ -1,3 +1,7 @@
+//
+// Set
+//
+
 #ifndef T
 #error "Template type T undefined for <set.h>"
 #endif
@@ -14,9 +18,7 @@ typedef struct B
     struct B* r;
     struct B* p;
     T key;
-    // Red = 0
-    // Black = 1
-    int color;
+    int color; // Red = 0, Black = 1
 }
 B;
 
@@ -54,16 +56,119 @@ JOIN(A, end)(A* self)
     return NULL;
 }
 
+static inline B*
+JOIN(B, min)(B* self)
+{
+    while(self->l)
+        self = self->l;
+    return self;
+}
+
+static inline B*
+JOIN(B, max)(B* self)
+{
+    while(self->r)
+        self = self->r;
+    return self;
+}
+
+static inline B*
+JOIN(B, next)(B* self)
+{
+    if(self->r)
+    {
+        self = self->r;
+        while(self->l)
+            self = self->l;
+    }
+    else
+    {
+        B* parent = self->p;
+        while(parent && self == parent->r)
+        {
+            self = parent;
+            parent = parent->p;
+        }
+        self = parent;
+    }
+    return self;
+}
+
+static inline void
+JOIN(I, step)(I* self)
+{
+    if(self->next == self->end)
+        self->done = 1;
+    else
+    {
+        self->node = self->next;
+        self->ref = &self->node->key;
+        self->next = JOIN(B, next)(self->node);
+    }
+}
+
+static inline I
+JOIN(I, range)(A* container, B* begin, B* end)
+{
+    (void) container;
+    static I zero;
+    I self = zero;
+    if(begin)
+    {
+        self.step = JOIN(I, step);
+        self.node = JOIN(B, min)(begin);
+        self.ref = &self.node->key;
+        self.next = JOIN(B, next)(self.node);
+        self.end = end;
+    }
+    else
+        self.done = 1;
+    return self;
+}
+
 static inline int
 JOIN(A, empty)(A* self)
 {
     return self->size == 0;
 }
 
+static inline I
+JOIN(I, each)(A* a)
+{
+    return JOIN(A, empty)(a)
+         ? JOIN(I, range)(a, NULL, NULL)
+         : JOIN(I, range)(a, JOIN(A, begin)(a), JOIN(A, end)(a));
+}
+
 static inline T
 JOIN(A, implicit_copy)(T* self)
 {
     return *self;
+}
+
+static inline int
+JOIN(A, equal)(A* self, A* other, int _equal(T*, T*))
+{
+    if(self->size != other->size)
+        return 0;
+    I a = JOIN(I, each)(self);
+    I b = JOIN(I, each)(other);
+    while(!a.done && !b.done)
+    {
+        if(!_equal(a.ref, b.ref))
+            return 0;
+        a.step(&a);
+        b.step(&b);
+    }
+    return 1;
+}
+
+static inline void
+JOIN(A, swap)(A* self, A* other)
+{
+    A temp = *self;
+    *self = *other;
+    *other = temp;
 }
 
 static inline A
@@ -106,22 +211,6 @@ static inline int
 JOIN(B, is_red)(B* self)
 {
     return JOIN(B, color)(self) == 0;
-}
-
-static inline B*
-JOIN(B, min)(B* self)
-{
-    while(self->l)
-        self = self->l;
-    return self;
-}
-
-static inline B*
-JOIN(B, max)(B* self)
-{
-    while(self->r)
-        self = self->r;
-    return self;
 }
 
 static inline B*
@@ -179,12 +268,6 @@ JOIN(A, count)(A* self, T key)
     return JOIN(A, find)(self, key) ? 1 : 0;
 }
 
-static inline int
-JOIN(A, contains)(A* self, T key)
-{
-    return JOIN(A, count)(self, key) == 1;
-}
-
 static inline void
 JOIN(B, replace)(A* self, B* a, B* b)
 {
@@ -203,76 +286,76 @@ JOIN(B, replace)(A* self, B* a, B* b)
 
 #ifdef USE_INTERNAL_VERIFY
 
-#include <assert.h>
+    #include <assert.h>
 
-static inline void
-JOIN(B, verify_property_1)(B* self)
-{
-    assert(JOIN(B, is_red)(self) || JOIN(B, is_blk)(self));
-    if(self)
+    static inline void
+    JOIN(B, verify_property_1)(B* self)
     {
-        JOIN(B, verify_property_1)(self->l);
-        JOIN(B, verify_property_1)(self->r);
+        assert(JOIN(B, is_red)(self) || JOIN(B, is_blk)(self));
+        if(self)
+        {
+            JOIN(B, verify_property_1)(self->l);
+            JOIN(B, verify_property_1)(self->r);
+        }
     }
-}
 
-static inline void
-JOIN(B, verify_property_2)(B* self)
-{
-    assert(JOIN(B, is_blk)(self));
-}
+    static inline void
+    JOIN(B, verify_property_2)(B* self)
+    {
+        assert(JOIN(B, is_blk)(self));
+    }
 
-static inline void
-JOIN(B, verify_property_4)(B* self)
-{
-    if(JOIN(B, is_red)(self))
+    static inline void
+    JOIN(B, verify_property_4)(B* self)
     {
-        assert(JOIN(B, is_blk)(self->l));
-        assert(JOIN(B, is_blk)(self->r));
-        assert(JOIN(B, is_blk)(self->p));
+        if(JOIN(B, is_red)(self))
+        {
+            assert(JOIN(B, is_blk)(self->l));
+            assert(JOIN(B, is_blk)(self->r));
+            assert(JOIN(B, is_blk)(self->p));
+        }
+        if(self)
+        {
+            JOIN(B, verify_property_4)(self->l);
+            JOIN(B, verify_property_4)(self->r);
+        }
     }
-    if(self)
-    {
-        JOIN(B, verify_property_4)(self->l);
-        JOIN(B, verify_property_4)(self->r);
-    }
-}
 
-static inline void
-JOIN(B, count_blk)(B* self, int nodes, int* in_path)
-{
-    if(JOIN(B, is_blk)(self))
-        nodes += 1;
-    if(self)
+    static inline void
+    JOIN(B, count_blk)(B* self, int nodes, int* in_path)
     {
-        JOIN(B, count_blk)(self->l, nodes, in_path);
-        JOIN(B, count_blk)(self->r, nodes, in_path);
-    }
-    else
-    {
-        if(*in_path == -1)
-            *in_path = nodes;
+        if(JOIN(B, is_blk)(self))
+            nodes += 1;
+        if(self)
+        {
+            JOIN(B, count_blk)(self->l, nodes, in_path);
+            JOIN(B, count_blk)(self->r, nodes, in_path);
+        }
         else
-            assert(nodes == *in_path);
+        {
+            if(*in_path == -1)
+                *in_path = nodes;
+            else
+                assert(nodes == *in_path);
+        }
     }
-}
 
-static inline void
-JOIN(B, verify_property_5)(B* self)
-{
-    int in_path = -1;
-    JOIN(B, count_blk)(self, 0, &in_path);
-}
+    static inline void
+    JOIN(B, verify_property_5)(B* self)
+    {
+        int in_path = -1;
+        JOIN(B, count_blk)(self, 0, &in_path);
+    }
 
-static inline void
-JOIN(A, verify)(A* self)
-{
-    JOIN(B, verify_property_1)(self->root); // Property 1: Each node is either red or black.
-    JOIN(B, verify_property_2)(self->root); // Property 2: The root node is black.
-    /* Implicit */                          // Property 3: Leaves are colored black
-    JOIN(B, verify_property_4)(self->root); // Property 4: Every red node has two black ndoes.
-    JOIN(B, verify_property_5)(self->root); // Property 5: All paths from a node have the same number of black nodes.
-}
+    static inline void
+    JOIN(A, verify)(A* self)
+    {
+        JOIN(B, verify_property_1)(self->root); // Property 1: Each node is either red or black.
+        JOIN(B, verify_property_2)(self->root); // Property 2: The root node is black.
+        /* Implicit */                          // Property 3: Leaves are colored black
+        JOIN(B, verify_property_4)(self->root); // Property 4: Every red node has two black ndoes.
+        JOIN(B, verify_property_5)(self->root); // Property 5: All paths from a node have the same number of black nodes.
+    }
 
 #endif
 
@@ -565,90 +648,6 @@ JOIN(A, free)(A* self)
     *self = JOIN(A, init)(self->compare);
 }
 
-static inline void
-JOIN(A, swap)(A* self, A* other)
-{
-    A temp = *self;
-    *self = *other;
-    *other = temp;
-}
-
-static inline B*
-JOIN(B, next)(B* self)
-{
-    if(self->r)
-    {
-        self = self->r;
-        while(self->l)
-            self = self->l;
-    }
-    else
-    {
-        B* parent = self->p;
-        while(parent && self == parent->r)
-        {
-            self = parent;
-            parent = parent->p;
-        }
-        self = parent;
-    }
-    return self;
-}
-
-static inline void
-JOIN(I, step)(I* self)
-{
-    if(self->next == self->end)
-        self->done = 1;
-    else
-    {
-        self->node = self->next;
-        self->ref = &self->node->key;
-        self->next = JOIN(B, next)(self->node);
-    }
-}
-
-static inline I
-JOIN(I, range)(B* begin, B* end)
-{
-    static I zero;
-    I self = zero;
-    if(begin)
-    {
-        self.step = JOIN(I, step);
-        self.node = JOIN(B, min)(begin);
-        self.ref = &self.node->key;
-        self.next = JOIN(B, next)(self.node);
-        self.end = end;
-    }
-    else
-        self.done = 1;
-    return self;
-}
-
-static inline I
-JOIN(I, each)(A* a)
-{
-    return JOIN(I, range)(JOIN(A, begin)(a), JOIN(A, end)(a));
-}
-
-static inline int
-JOIN(A, equal)(A* self, A* other, int _equal(T*, T*))
-{
-    if(self->size != other->size)
-        return 0;
-    I a = JOIN(I, each)(self);
-    I b = JOIN(I, each)(other);
-    while(!a.done && !b.done)
-    {
-        if(!_equal(&a.node->key, &b.node->key))
-            return 0;
-        a.step(&a);
-        b.step(&b);
-    }
-    return 1;
-}
-
 static inline A
 JOIN(A, copy)(A* self)
 {
@@ -663,7 +662,7 @@ JOIN(A, copy)(A* self)
 }
 
 static inline size_t
-JOIN(A, remove_if)(A* self, int (*_match)(T*))
+JOIN(A, remove_if)(A* self, int _match(T*))
 {
     size_t erases = 0;
     foreach(A, self, it)
@@ -698,7 +697,8 @@ static inline A
 JOIN(A, difference)(A* a, A* b)
 {
     A self = JOIN(A, copy)(a);
-    foreach(A, b, i) JOIN(A, erase)(&self, *i.ref);
+    foreach(A, b, i)
+        JOIN(A, erase)(&self, *i.ref);
     return self;
 }
 
@@ -707,7 +707,8 @@ JOIN(A, symmetric_difference)(A* a, A* b)
 {
     A self = JOIN(A, union)(a, b);
     A intersection = JOIN(A, intersection)(a, b);
-    foreach(A, &intersection, i) JOIN(A, erase)(&self, *i.ref);
+    foreach(A, &intersection, i)
+        JOIN(A, erase)(&self, *i.ref);
     JOIN(A, free)(&intersection);
     return self;
 }

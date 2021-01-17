@@ -1,3 +1,7 @@
+//
+// Vector
+//
+
 #ifndef T
 #error "Template type T undefined for <vec.h>"
 #endif
@@ -33,33 +37,6 @@ typedef struct I
 }
 I;
 
-static inline T
-JOIN(A, implicit_copy)(T* self)
-{
-    return *self;
-}
-
-static inline A
-JOIN(A, init)(void)
-{
-    static A zero;
-    A self = zero;
-#ifdef P
-#undef P
-    self.copy = JOIN(A, implicit_copy);
-#else
-    self.free = JOIN(T, free);
-    self.copy = JOIN(T, copy);
-#endif
-    return self;
-}
-
-static inline int
-JOIN(A, empty)(A* self)
-{
-    return self->size == 0;
-}
-
 static inline T*
 JOIN(A, at)(A* self, size_t index)
 {
@@ -88,6 +65,97 @@ static inline T*
 JOIN(A, end)(A* self)
 {
     return JOIN(A, back)(self) + 1;
+}
+
+static inline void
+JOIN(I, step)(I* self)
+{
+    if(self->next >= self->end)
+        self->done = 1;
+    else
+    {
+        self->ref = self->next;
+        self->next += 1;
+    }
+}
+
+static inline I
+JOIN(I, range)(A* container, T* begin, T* end)
+{
+    (void) container;
+    static I zero;
+    I self = zero;
+    if(begin && end)
+    {
+        self.step = JOIN(I, step);
+        self.begin = begin;
+        self.end = end;
+        self.next = begin + 1;
+        self.ref = begin;
+    }
+    else
+        self.done = 1;
+    return self;
+}
+
+static inline int
+JOIN(A, empty)(A* self)
+{
+    return self->size == 0;
+}
+
+static inline I
+JOIN(I, each)(A* a)
+{
+    return JOIN(A, empty)(a)
+         ? JOIN(I, range)(a, NULL, NULL)
+         : JOIN(I, range)(a, JOIN(A, begin)(a), JOIN(A, end)(a));
+}
+
+static inline T
+JOIN(A, implicit_copy)(T* self)
+{
+    return *self;
+}
+
+static inline int
+JOIN(A, equal)(A* self, A* other, int _equal(T*, T*))
+{
+    if(self->size != other->size)
+        return 0;
+    I a = JOIN(I, each)(self);
+    I b = JOIN(I, each)(other);
+    while(!a.done && !b.done)
+    {
+        if(!_equal(a.ref, b.ref))
+            return 0;
+        a.step(&a);
+        b.step(&b);
+    }
+    return 1;
+}
+
+static inline void
+JOIN(A, swap)(A* self, A* other)
+{
+    A temp = *self;
+    *self = *other;
+    *other = temp;
+}
+
+static inline A
+JOIN(A, init)(void)
+{
+    static A zero;
+    A self = zero;
+#ifdef P
+#undef P
+    self.copy = JOIN(A, implicit_copy);
+#else
+    self.free = JOIN(T, free);
+    self.copy = JOIN(T, copy);
+#endif
+    return self;
 }
 
 static inline void
@@ -295,54 +363,8 @@ JOIN(A, copy)(A* self)
     return other;
 }
 
-static inline void
-JOIN(A, swap)(A* self, A* other)
-{
-    A temp = *self;
-    *self = *other;
-    *other = temp;
-}
-
-static inline void
-JOIN(I, step)(I* self)
-{
-    if(self->next < self->begin || self->next >= self->end)
-        self->done = 1;
-    else
-    {
-        self->ref = self->next;
-        self->next += 1;
-    }
-}
-
-static inline I
-JOIN(I, range)(T* begin, T* end)
-{
-    static I zero;
-    I self = zero;
-    if(begin && end)
-    {
-        self.step = JOIN(I, step);
-        self.begin = begin;
-        self.end = end;
-        self.next = begin + 1;
-        self.ref = begin;
-    }
-    else
-        self.done = 1;
-    return self;
-}
-
-static inline I
-JOIN(I, each)(A* a)
-{
-    return JOIN(A, empty)(a)
-        ? JOIN(I, range)(NULL, NULL)
-        : JOIN(I, range)(JOIN(A, begin)(a), JOIN(A, end)(a));
-}
-
 static inline size_t
-JOIN(A, remove_if)(A* self, int (*_match)(T*))
+JOIN(A, remove_if)(A* self, int _match(T*))
 {
     size_t erases = 0;
     foreach(A, self, it)
@@ -359,31 +381,12 @@ JOIN(A, remove_if)(A* self, int (*_match)(T*))
     return erases;
 }
 
-static inline int
-JOIN(A, equal)(A* self, A* other, int _equal(T*, T*))
-{
-    if(self->size != other->size)
-        return 0;
-    I a = JOIN(I, each)(self);
-    I b = JOIN(I, each)(other);
-    while(!a.done && !b.done)
-    {
-        if(!_equal(a.ref, b.ref))
-            return 0;
-        a.step(&a);
-        b.step(&b);
-    }
-    return 1;
-}
-
 static inline T*
 JOIN(A, find)(A* self, T key, int _equal(T*, T*))
 {
     foreach(A, self, it)
-    {
         if(_equal(it.ref, &key))
             return it.ref;
-    }
     return NULL;
 }
 

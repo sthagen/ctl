@@ -7,6 +7,30 @@
 
 #define P
 #define T int
+#include <ust.h>
+
+#define P
+#define T float
+#include <ust.h>
+
+size_t
+int_hash(int* x)
+{ return abs(*x); }
+
+int
+int_equal(int* a, int* b)
+{ return *a == *b; }
+
+size_t
+float_hash(float* x)
+{ return abs((int) *x); }
+
+int
+float_equal(float* a, float* b)
+{ return *a == *b; }
+
+#define P
+#define T int
 #include <stk.h>
 
 #define P
@@ -177,6 +201,28 @@ main(void)
         lst_int_push_back(&a, 8);
         lst_int_unique(&a, int_match);
         lst_int_free(&a);
+    }{
+        ust_int a = ust_int_init(int_hash, int_equal);
+        ust_int_insert(&a, -0);
+        ust_int_insert(&a, -1);
+        ust_int_insert(&a, -2);
+        ust_int_insert(&a, -3);
+        ust_int_insert(&a, -4);
+        ust_int_insert(&a, -5);
+        ust_int_insert(&a, -6);
+        ust_int_insert(&a, -7);
+        ust_int_free(&a);
+    }{
+        ust_float a = ust_float_init(float_hash, float_equal);
+        ust_float_insert(&a, -0);
+        ust_float_insert(&a, -1);
+        ust_float_insert(&a, -2);
+        ust_float_insert(&a, -3);
+        ust_float_insert(&a, -4);
+        ust_float_insert(&a, -5);
+        ust_float_insert(&a, -6);
+        ust_float_insert(&a, -7);
+        ust_float_free(&a);
     }
     TEST_PASS(__FILE__);
 }
