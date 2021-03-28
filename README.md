@@ -181,6 +181,8 @@ step                x    x    x    x    x                   x
 range               x    x    x    x    x                   x
 find                x    x    x    x    x                   x
 count                    x              x                   x
+lower_bound                             x                   
+upper_bound                             x                   
 erase               x    x    x    x    x                   x
 copy                x    x    x    x    x                   x
 begin               x    x    x    x    x                   x
@@ -236,3 +238,5 @@ key_compare              x
 Thank you https://github.com/kully for the Plotly code, and thank you for the general review and manual testing.
 
 Thank you `smlckz` for the `foreach` cleanup.
+
+Thank you https://github.com/wwwVladislav for the addition of set lower_bound and upper_bound.
