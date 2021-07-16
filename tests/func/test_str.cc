@@ -52,12 +52,28 @@ char_compare(char* a, char* b)
     return *a > *b;
 }
 
+static void
+test_zero_size_copy(void)
+{
+    str a = str_init("");
+    str b = str_copy(&a);
+    std::string aa = "";
+    std::string bb = aa;
+    assert(aa.size() == a.size);
+    assert(bb.size() == b.size);
+    assert(aa.capacity() == a.capacity);
+    assert(bb.capacity() == b.capacity);
+    str_free(&a);
+    str_free(&b);
+}
+
 int
 main(void)
 {
 #ifdef SRAND
     srand(time(NULL));
 #endif
+    test_zero_size_copy();
     const size_t loops = TEST_RAND(TEST_MAX_LOOPS);
     for(size_t loop = 0; loop < loops; loop++)
     {
@@ -285,14 +301,6 @@ main(void)
                     const size_t resize = 3 * TEST_RAND(a.size);
                     b.resize(resize);
                     str_resize(&a, resize, '\0');
-                    CHECK(a, b);
-                    break;
-                }
-                case TEST_RESERVE:
-                {
-                    const size_t capacity = 3 * TEST_RAND(a.capacity);
-                    b.reserve(capacity);
-                    str_reserve(&a, capacity);
                     CHECK(a, b);
                     break;
                 }
